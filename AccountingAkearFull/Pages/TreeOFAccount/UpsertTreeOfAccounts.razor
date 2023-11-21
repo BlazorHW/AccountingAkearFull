@@ -1,0 +1,60 @@
+﻿@page "/upsertTreeOfAccounts/{id:int}"
+@using Accouting.Models.ViewMessage;
+@inject TreeOfAccountsServecs _treeOfAccountsServecs
+<h3>UpsertTreeOfAccounts</h3>
+
+
+<MudContainer Class="pa-4 mr-8">
+    <EditForm Model="@_treeOfAccounts" OnValidSubmit="@Upsert">
+        <DataAnnotationsValidator />
+        <MudPaper Class="d-flex">
+            <MudGrid Class="pa-4">
+                <MudItem xs="6">
+                    <MudTextField T="string" @bind-Text="_treeOfAccounts.NumberAcc" HelperText="يرجى ادخال * مكان الرقم التسلسلي و yyyy مكان السنة" Label="الرقم الإشاري الداخلي" For="@(() => _treeOfAccounts.NumberAcc)" />
+
+                </MudItem>
+               
+                <MudItem xs="6">
+                    <MudButton Variant="Variant.Filled" ButtonType="ButtonType.Submit" Color="Color.Primary" Class="ml-auto">حفظ</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </EditForm>
+</MudContainer>
+@code {
+    [Parameter]
+    public int id { get; set; }
+    TreeOfAccounts _treeOfAccounts = new();
+    protected override async Task OnInitializedAsync()
+    {
+        if (id != 0)
+        {
+            _treeOfAccounts = await _treeOfAccountsServecs.GetTreeOfAccountsByIdAsync(id);
+        }
+    }
+    async void Upsert()
+    {
+        if (_treeOfAccounts.NumberAcc.IndexOf("*") == -1 )
+        {
+            _snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomEnd;
+            _snackbar.Add("يرجى كتابة الرقم الحساب بشكل صحيح", Severity.Error);
+            return;
+        }
+        ResponseViewModel response;
+        if (id == 0) response = await _treeOfAccountsServecs.AddTreeOfAccounts(_treeOfAccounts);
+        else response = await _treeOfAccountsServecs.EditTreeOfAccounts(id, _treeOfAccounts);
+        if (response.State)
+        {
+            _snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomEnd;
+            _snackbar.Add(response.Message, Severity.Success);
+            _navigation.NavigateTo("/listTreeOfAccounts");
+        }
+        else
+        {
+            _snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomEnd;
+            _snackbar.Add(response.Message, Severity.Error);
+        }
+
+    }
+}
+

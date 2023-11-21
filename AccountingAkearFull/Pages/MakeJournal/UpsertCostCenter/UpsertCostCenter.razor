@@ -1,0 +1,155 @@
+﻿@page "/upsertCostCenter"
+
+@using Accouting.Models;
+@using Accouting.Models.ViewMessage;
+@using Accouting.Moudels;
+@inject CostCenterServecs _costCenterServecs
+
+<h3>مركز التكلفة</h3>
+
+
+
+<MudContainer Class="pa-4 mr-8">
+    <EditForm Model="@_costCenter" OnValidSubmit="@Upsert">
+        <DataAnnotationsValidator />
+        <MudPaper Class="d-flex">
+            <MudGrid Class="pa-4">
+                <MudItem xs="6">
+                    <MudTextField T="int" @bind-Value="_costCenter.NumberCostCenter" Label="رقم مركز التكلفة" For="@(() => _costCenter.NumberCostCenter)" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" @bind-Text="_costCenter.NameCostCenter" Label="مركز التكلفة" For="@(() => _costCenter.NameCostCenter)" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudButton Variant="Variant.Filled" ButtonType="ButtonType.Submit" Color="Color.Primary" Class="ml-auto">حفظ</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </EditForm>
+</MudContainer>
+
+
+<MudTable Items="@costCenters" Loading="loading" Dense="true" Hover="true" Bordered="true" Striped="true" Filter="new Func<CostCenter,bool>(FilterFunc1)" @bind-SelectedItem="selectedItem">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">الرقم الإشاري</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="Search" Placeholder="بحث" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>ت</MudTh>
+        <MudTh>رقم حساب تكلفة</MudTh>
+        <MudTh>اسم مركز التكلفة</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ت">@(costCenters.ToList().IndexOf(context) + 1)</MudTd>
+            <MudTd DataLabel="رقم مركز التكلفة">@context.NumberCostCenter</MudTd>
+            <MudTd DataLabel="مركز التكلفة">@context.NameCostCenter</MudTd>
+            <MudTd>
+                <MudIconButton Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.Edit" OnClick="()=>Edit(context)" />
+                <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.Delete" OnClick="()=>Delete(context)" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+
+    <MudMessageBox @ref="mbox" Title="تنبيه" CancelText="إلغاء">
+        <MessageContent>
+            هل تريد الحذف  ؟ @DeleteBox
+        </MessageContent>
+        <YesButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteForever">حذف!</MudButton>
+        </YesButton>
+    </MudMessageBox>
+
+    @code {
+
+    MudMessageBox mbox { get; set; }
+    string DeleteBox;
+    bool loading = true;
+    string Search = "";
+    IEnumerable<CostCenter> costCenters = new List<CostCenter>();
+    CostCenter selectedItem = null;
+    CostCenter _costCenter = new();
+    protected override async Task OnInitializedAsync()
+    {
+        if (_costCenter.Id != 0)
+        {
+            _costCenter = await _costCenterServecs.GetCostCenterByIdAsync(_costCenter.Id);
+        }
+        await LoadingData();
+    }
+
+    async Task LoadingData()
+    {
+        loading = true;
+        costCenters = new List<CostCenter>();
+        StateHasChanged();
+        costCenters = await _costCenterServecs.GetAllCostCenter();
+        loading = false;
+        StateHasChanged();
+    }
+
+    async void Upsert()
+    {
+
+        ResponseViewModel response;
+        if (_costCenter.Id == 0) response = await _costCenterServecs.AddCostCenter(_costCenter);
+        else response = await _costCenterServecs.EditAccount(_costCenter.Id, _costCenter); _costCenter.Id = 0;
+        if (response.State)
+        {
+            _snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomEnd;
+            _snackbar.Add(response.Message, Severity.Success);
+
+            // إفراغ الحقلين بعد الحفظ
+            _costCenter.NumberCostCenter = 0;
+            _costCenter.NameCostCenter = "";
+            await LoadingData();
+        }
+        else
+        {
+            _snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomEnd;
+            _snackbar.Add(response.Message, Severity.Error);
+        }
+
+    }
+
+    async Task Delete(CostCenter obj)
+    {
+        DeleteBox = obj.NameCostCenter;
+        bool? result = await mbox.Show();
+        if (result == true)
+        {
+            var response = await _costCenterServecs.DeleteCostCenter(obj.Id);
+            if (response.State)
+            {
+                _snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomEnd;
+                _snackbar.Add(response.Message, Severity.Success);
+                await LoadingData();
+            }
+        }
+
+    }
+
+    private bool FilterFunc1(CostCenter element) => FilterFunc(element, Search);
+
+    private bool FilterFunc(CostCenter element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.NameCostCenter.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    void Edit(CostCenter edit)
+    {
+        _costCenter.Id = edit.Id;
+        _costCenter.NumberCostCenter = edit.NumberCostCenter;
+        _costCenter.NameCostCenter = edit.NameCostCenter;
+    }
+
+}

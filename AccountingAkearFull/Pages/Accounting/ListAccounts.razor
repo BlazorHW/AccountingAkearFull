@@ -1,0 +1,94 @@
+﻿@page "/listAccounts"
+@using Accouting.Servecs
+
+@inject AccountSereves _accountSereves
+
+<MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="()=>Upsert(0)" />
+<MudTable Items="@accountss" Loading="loading" Dense="true" Hover="true" Bordered="true" Striped="true" Filter="new Func<Accounts,bool>(FilterFunc1)" @bind-SelectedItem="selectedItem">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Accounts</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="Search" Placeholder="بحث" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>ت</MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<Accounts, object>(x=>x.NumberAccount)">رقم الحساب</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<Accounts, object>(x=>x.NameAccount)">اسم الحساب</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<Accounts, object>(x=>x.SubAccounts)">نوع الحساب</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<Accounts, object>(x=>x.IsBudgetProfit)">ميزانية - قائمة دخل</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortBy="new Func<Accounts, object>(x=>x.Description)">ملاحظات</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ت">@(accountss.ToList().IndexOf(context) + 1)</MudTd>
+        <MudTd DataLabel="رقم الحساب">@context.NumberAccount</MudTd>
+            <MudTd DataLabel="اسم الحساب">@context.NameAccount</MudTd>
+            <MudTd DataLabel="نوع الحساب">@(context.SubAccounts ? "حساب فرعي" : "حساب غير فرعي")</MudTd>
+            <MudTd DataLabel="ميزانية - قائمة دخل">@(context.IsBudgetProfit ? "ميزانية" : "قائمة دخل")</MudTd>
+            <MudTd DataLabel="ملاحظات">@context.Description</MudTd>
+            <MudTd>
+                <MudIconButton Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.Edit" OnClick="()=>Upsert(context.Id)" />
+                <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.Delete" OnClick="()=>Delete(context)" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+    <MudMessageBox @ref="mbox" Title="تنبيه" CancelText="إلغاء">
+        <MessageContent>
+            هل تريد حذف <b>@NameAccountsForDelete</b> ؟
+        </MessageContent>
+        <YesButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteForever">حذف!</MudButton>
+        </YesButton>
+    </MudMessageBox>
+    @code {
+    IEnumerable<Accounts> accountss = new List<Accounts>();
+    Accounts selectedItem = null;
+    bool loading = true;
+    string Search = "";
+    string NameAccountsForDelete;
+    MudMessageBox mbox { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadingData();
+    }
+    async Task LoadingData()
+    {
+        loading = true;
+        StateHasChanged();
+        accountss = await _accountSereves.GetAllAccounts();
+        loading = false;
+        StateHasChanged();
+    }
+    private bool FilterFunc1(Accounts element) => FilterFunc(element, Search);
+
+    private bool FilterFunc(Accounts element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.NameAccount.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+    void Upsert(int id)
+    {
+        _navigation.NavigateTo($"/upsertAccounts/{id}");
+    }
+  async  void Delete(Accounts obj)
+    {
+        NameAccountsForDelete = obj.NameAccount;
+        bool? result = await mbox.Show();
+        if (result == true)
+        {
+            var response = await _accountSereves.DeleteAccount(obj.Id);
+            if (response.State)
+            {
+                _snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomEnd;
+                _snackbar.Add(response.Message, Severity.Success);
+                await LoadingData();
+            }
+        }
+    }
+ 
+}

@@ -1,0 +1,81 @@
+﻿@page "/makejournal"
+<h3>تسجيل قيود محاسبية</h3>
+
+@inject MakeJournalBodyServecs _makeJournalServecs
+
+<MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.MoveUp" @onclick="()=>Upsert(0)" />
+<MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.MoveToInbox" @onclick="()=>Upsert2(0)" />
+<MudPaper Height="60px" Width="35%">
+    <MudContainer MaxWidth="MaxWidth.False">
+        <MudDatePicker Label="Basic example" @bind-Date="date" />
+        <MudPaper Height="50px" Width="100%" Square="true" Class="mud-theme-primary">
+          
+        </MudPaper>
+    </MudContainer>
+</MudPaper>
+
+<MudTable Items="@makeJournalBodys" FixedHeader="@fixed_header" FixedFooter="@fixed_footer" Height="@(fixed_header || fixed_footer ?"400px":"")">
+    <HeaderContent>
+        <MudTh>ت</MudTh>
+        @* <MudTh>رقم الحساب</MudTh> *@
+        <MudTh>اسم الحساب</MudTh>
+        <MudTh>البيان</MudTh>
+        <MudTh>مدين</MudTh>
+        <MudTh>دائن</MudTh>
+        <MudTh>نوع الحساب</MudTh>
+        @* <MudTh>مركز التكلفة</MudTh> *@
+    
+        
+
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ت">@(makeJournalBodys.ToList().IndexOf(context) + 1)</MudTd>
+           @*  <MudTd DataLabel="رقم الحساب">@context.accounts.NumberAccount</MudTd> *@
+            <MudTd DataLabel="اسم الحساب">@context.Accounts.NameAccount</MudTd>
+            <MudTd DataLabel="البيان">@context.Details</MudTd>
+            <MudTd DataLabel="مدين">@context.Debit </MudTd>
+            <MudTd DataLabel="دائن">@context.Credit </MudTd>
+            <MudTd DataLabel="نوع الحساب">@(context.IsBudgetProfit ? "ميزانية":"قائمة دخل")</MudTd>
+            @* <MudTd DataLabel="مركز التكلفة">@context.costCenters.NameCostCenter</MudTd> *@
+
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{50, 100}" />
+        </PagerContent>
+    </MudTable>
+
+    <MudSwitch @bind-Checked="@fixed_header">Fixed Header</MudSwitch>
+
+    @code {
+    DateTime? date = DateTime.Today;
+    bool fixed_header = true, loading = true;
+    bool fixed_footer = false;
+    public string TextValue { get; set; }
+    private IEnumerable<MakeJournalBody> makeJournalBodys = new List<MakeJournalBody>();
+    MudMessageBox mbox { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LodingData();
+    }
+    async Task LodingData()
+    {
+        loading = true;
+        makeJournalBodys = new List<MakeJournalBody>();
+        StateHasChanged();
+        makeJournalBodys = await _makeJournalServecs.GetAllMakeJournalsAsync();
+        loading = false;
+        StateHasChanged();
+    }
+    void Upsert(int id)
+    {
+        _navigation.NavigateTo("/upsertCostCenter");
+
+    }
+    void Upsert2(int id)
+    {
+        _navigation.NavigateTo($"/upsertMakejournal/{id}");
+
+    }
+}

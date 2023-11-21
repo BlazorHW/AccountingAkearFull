@@ -1,0 +1,76 @@
+﻿@page "/upsertAccounts/{id:int}"
+@namespace Accouting.Models.ViewMessage
+@inject AccountSereves _accountsereves
+<MudContainer Class="pa-4 mr-8">
+    <EditForm Model="@_accounts" OnValidSubmit="@Upsert">
+        <DataAnnotationsValidator />
+        <MudPaper Class="d-flex">
+            <MudGrid Class="pa-4">
+                <MudItem xs="3">
+                    <MudTextField T="string" Text="@_accounts.NameAccount" TextChanged="NameTextChanged"  Label="اسم " For="@(() => _accounts.NameAccount)" />
+
+                </MudItem>
+                <MudItem xs="3">
+                    <MudTextField T="int" @bind-Value="@_accounts.NumberAccount"  Label="رقم" For="@(() => _accounts.NumberAccount)" />
+
+                </MudItem>
+                <MudItem xs="3">
+
+                    <MudRadioGroup T="bool" @bind-SelectedOption="_accounts.SubAccounts">
+                        <MudRadio Option="true" Color="Color.Primary" Dense="true">حساب فرعي</MudRadio>
+                        <MudRadio Option="false" Color="Color.Secondary" Dense="false">حساب رئيسي</MudRadio>
+                    </MudRadioGroup>
+
+                </MudItem>
+                <MudItem xs="3">
+                    <MudRadioGroup @bind-SelectedOption="_accounts.IsBudgetProfit">
+                        <MudRadio Option="true" Color="Color.Primary" Dense="true" >ميزانية</MudRadio>
+                        <MudRadio Option="false" Color="Color.Secondary" Dense="false" >قائمة الدخل</MudRadio>
+                    </MudRadioGroup>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField T="string" Text="@_accounts.Description"  Label="ملاحظات " For="@(() => _accounts.NameAccount)" />
+
+                </MudItem>
+                <MudItem xs="6">
+                    <MudButton Variant="Variant.Filled" ButtonType="ButtonType.Submit" Color="Color.Primary" Class="ml-auto">حفظ</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </EditForm>
+</MudContainer>
+@code {
+    [Parameter]
+    public int id { get; set; }
+    Accounts _accounts = new();
+    bool IsDisabled = false;
+    protected override async Task OnInitializedAsync()
+    {
+        if (id != 0)
+            _accounts = await _accountsereves.GetAccountByIdAsync(id);
+    }
+    async void Upsert()
+    {
+        ResponseViewModel response;
+        if (id == 0)
+            response = await _accountsereves.AddAccount(_accounts);
+        else
+            response = await _accountsereves.EditAccount(id, _accounts);
+
+        if (response.State)
+        {
+            _snackbar.Add(response.Message, Severity.Success);
+            _navigation.NavigateTo("/listAccounts");
+        }
+        else
+        {
+            _snackbar.Add(response.Message, Severity.Error);
+        }
+    }
+  
+    void NameTextChanged(string name)
+    {
+        _accounts.NameAccount = name;
+        StateHasChanged();
+    }
+}
